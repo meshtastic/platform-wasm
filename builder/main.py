@@ -94,15 +94,16 @@ def _locate_emcc():
     project_dir = env.subst("$PROJECT_DIR")
     home = os.path.expanduser("~")
     # Priority order: explicit override, $EMSDK, ~/emsdk, a project-local
-    # checkout, then a sibling Meshtastic companion checkout (which bootstraps an
-    # emsdk under ./emsdk via its tools/setup-emsdk.sh).
+    # checkout, then a sibling Meshtastic companion checkout — meshtasticd-wasm-node,
+    # whose tools/setup-emsdk.sh bootstraps an emsdk under ./emsdk. (meshtastic-web-node
+    # is the repo's pre-rename name, kept as a fallback for older local checkouts.)
     candidates = [
         os.environ.get("EMSDK_ENV", ""),
         os.path.join(emsdk, "emsdk_env.sh") if emsdk else "",
         os.path.join(home, "emsdk", "emsdk_env.sh"),
         os.path.join(project_dir, ".emsdk", "emsdk_env.sh"),
-        os.path.join(project_dir, "..", "meshtastic-web-node", "emsdk", "emsdk_env.sh"),
         os.path.join(project_dir, "..", "meshtasticd-wasm-node", "emsdk", "emsdk_env.sh"),
+        os.path.join(project_dir, "..", "meshtastic-web-node", "emsdk", "emsdk_env.sh"),
     ]
     for script in candidates:
         if script and os.path.isfile(script) and _source_emsdk_env(script):
