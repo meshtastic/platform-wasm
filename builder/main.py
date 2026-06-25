@@ -22,12 +22,16 @@
     templates drive Emscripten. The "program" links to <progname>.mjs and emcc
     emits the companion <progname>.wasm.
 
-    Prerequisite: emcc must be reachable. Either `source <emsdk>/emsdk_env.sh`
-    so it's on PATH, or set $EMSDK to your emsdk checkout.
+    Prerequisite: an Emscripten SDK on the machine. The builder auto-locates it
+    (PATH, $EMSDK, ~/emsdk, a project-local .emsdk, or a sibling Meshtastic
+    companion checkout) and sources emsdk_env.sh, so `pio run` works even from a
+    shell/IDE that didn't source it. Set $EMSDK_ENV to point at a specific
+    emsdk_env.sh if it lives somewhere unusual.
 """
 
 import os
 import shutil
+import subprocess
 
 from SCons.Script import (
     AlwaysBuild,
@@ -38,14 +42,77 @@ from SCons.Script import (
 
 env = DefaultEnvironment()
 
+
 #
-# Locate the Emscripten toolchain
+# Locate (and if necessary bootstrap) the Emscripten toolchain.
 #
-emcc = shutil.which("emcc")
-if not emcc and os.getenv("EMSDK"):
-    cand = os.path.join(os.getenv("EMSDK"), "upstream", "emscripten", "emcc")
-    if os.path.isfile(cand):
-        emcc = cand
+# `emcc` just needs to be reachable. When `pio run` is invoked from a shell that
+# didn't `source emsdk_env.sh` — a VS Code task, an IDE build button, a bare
+# terminal — we probe the usual emsdk locations, source `emsdk_env.sh`, and
+# import its environment (PATH / EMSDK / EM_CONFIG / ...) so the toolchain and
+# emcc itself are set up. This keeps every consumer of the platform from having
+# to carry their own bootstrap; it's a no-op when emcc is already on PATH (CI,
+# or anyone who set it up in their shell).
+#
+def _emcc_on_path():
+    return shutil.which("emcc")
+
+
+def _prepend_path(directory):
+    if directory and os.path.isdir(directory):
+        os.environ["PATH"] = directory + os.pathsep + os.environ.get("PATH", "")
+
+
+def _source_emsdk_env(script):
+    # Source emsdk_env.sh in a subshell and copy its environment back. A
+    # newline-delimited `env` dump is portable across GNU/BSD; the emsdk vars
+    # have no embedded newlines. Returns True if emcc became reachable.
+    try:
+        out = subprocess.check_output(
+            ["bash", "-c", "source '%s' >/dev/null 2>&1 && env" % script],
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    for line in out.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key:
+            os.environ[key] = value
+    return bool(_emcc_on_path())
+
+
+def _locate_emcc():
+    if _emcc_on_path():
+        return _emcc_on_path()
+
+    emsdk = os.getenv("EMSDK")
+    if emsdk:
+        _prepend_path(os.path.join(emsdk, "upstream", "emscripten"))
+        if _emcc_on_path():
+            return _emcc_on_path()
+
+    project_dir = env.subst("$PROJECT_DIR")
+    home = os.path.expanduser("~")
+    # Priority order: explicit override, $EMSDK, ~/emsdk, a project-local
+    # checkout, then a sibling Meshtastic companion checkout (which bootstraps an
+    # emsdk under ./emsdk via its tools/setup-emsdk.sh).
+    candidates = [
+        os.environ.get("EMSDK_ENV", ""),
+        os.path.join(emsdk, "emsdk_env.sh") if emsdk else "",
+        os.path.join(home, "emsdk", "emsdk_env.sh"),
+        os.path.join(project_dir, ".emsdk", "emsdk_env.sh"),
+        os.path.join(project_dir, "..", "meshtastic-web-node", "emsdk", "emsdk_env.sh"),
+        os.path.join(project_dir, "..", "meshtasticd-wasm-node", "emsdk", "emsdk_env.sh"),
+    ]
+    for script in candidates:
+        if script and os.path.isfile(script) and _source_emsdk_env(script):
+            print("platform-wasm: emsdk environment loaded from %s" % script)
+            return _emcc_on_path()
+
+    return None
+
+
+emcc = _locate_emcc()
 if not emcc:
     raise SystemExit(
         "platform-wasm: emcc not found. Install the Emscripten SDK and run "
