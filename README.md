@@ -46,4 +46,7 @@ The canonical consumer is the firmware's `[env:wasm]` target
 
 ## License
 
-Apache-2.0.
+GPL-3.0-or-later, matching the [Meshtastic firmware](https://github.com/meshtastic/firmware)
+(see [LICENSE](LICENSE)). The `builder/` scripts are derived from PlatformIO's
+platform-native scaffolding (Apache-2.0, which is GPL-compatible) and retain
+their original file headers.

@@ -3,7 +3,7 @@
   "title": "Meshtasticd WASM",
   "description": "PlatformIO platform that compiles the Meshtastic portduino node to WebAssembly with Emscripten, so meshtasticd runs in a browser tab or headless Node and drives a LoRa radio over WebUSB. Mirrors platform-native; swaps the host GCC toolchain for emcc/em++ (Asyncify).",
   "homepage": "https://github.com/meshtastic/platform-wasm",
-  "license": "Apache-2.0",
+  "license": "GPL-3.0-or-later",
   "keywords": [
     "dev-platform",
     "wasm",
