@@ -1,0 +1,35 @@
+name: Examples
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Emscripten's SDK is straightforward on Linux/macOS; Windows is left out
+        # to keep the example smoke test simple.
+        os: [ubuntu-latest, macos-latest]
+        example:
+          - examples/hello-world
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      - name: Set up Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+      - name: Install dependencies
+        run: |
+          pip install -U platformio
+          pio pkg install --global --platform symlink://.
+      - name: Build examples
+        run: |
+          pio run -d ${{ matrix.example }}

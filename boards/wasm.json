@@ -1,0 +1,15 @@
+{
+  "build": {
+    "core": "FIXMECORE",
+    "extra_flags": "-DARCH_PORTDUINO -DARCH_PORTDUINO_WASM",
+    "variant": "native"
+  },
+  "upload": {
+    "maximum_ram_size": 99999999,
+    "maximum_size": 99999999
+  },
+  "frameworks": ["arduino"],
+  "name": "Meshtasticd WASM",
+  "url": "https://github.com/meshtastic/platform-wasm",
+  "vendor": "Meshtastic"
+}
